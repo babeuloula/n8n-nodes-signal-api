@@ -1,0 +1,23 @@
+services:
+    n8n:
+        image: docker.n8n.io/n8nio/n8n
+        restart: "unless-stopped"
+        ports:
+            - "127.0.0.1:5678:5678"
+        user: 1000:1000
+        environment:
+            - N8N_PORT=5678
+            - N8N_PROTOCOL=http
+            - NODE_ENV=dev
+            - GENERIC_TIMEZONE="Europe/Paris"
+            - N8N_LOG_LEVEL=debug
+            - CODE_ENABLE_STDOUT=true
+            - N8N_HIRING_BANNER_ENABLED=false
+            - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true
+        volumes:
+            - .:/srv
+            - n8n:/home/node/.n8n
+        working_dir: /srv
+
+volumes:
+    n8n:
