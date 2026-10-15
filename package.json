@@ -1,7 +1,7 @@
 {
 	"name": "n8n-nodes-signal-api",
-	"version": "0.1.0",
-	"description": "Send a message with Signal API",
+	"version": "0.2.0",
+	"description": "Send messages to Signal numbers and groups with Signal CLI REST API",
 	"license": "MIT",
 	"homepage": "",
 	"keywords": [
@@ -22,6 +22,7 @@
 		"dev": "n8n-node dev",
 		"lint": "n8n-node lint",
 		"lint:fix": "n8n-node lint --fix",
+		"test": "tsc -p tsconfig.test.json && node --test 'dist-test/test/**/*.test.js'",
 		"release": "n8n-node release",
 		"prepublishOnly": "n8n-node prerelease"
 	},
@@ -40,6 +41,7 @@
 	},
 	"devDependencies": {
 		"@n8n/node-cli": "*",
+		"@types/node": "^22.20.5",
 		"eslint": "9.32.0",
 		"prettier": "3.6.2",
 		"release-it": "^19.0.4",

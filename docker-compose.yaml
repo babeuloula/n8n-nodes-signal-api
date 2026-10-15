@@ -19,5 +19,14 @@ services:
             - n8n:/home/node/.n8n
         working_dir: /srv
 
+    # Tooling container (npm install, lint, tests) without starting n8n: `make install|lint|test`
+    node:
+        image: node:22-alpine
+        profiles: ["tools"]
+        user: 1000:1000
+        volumes:
+            - .:/srv
+        working_dir: /srv
+
 volumes:
     n8n:

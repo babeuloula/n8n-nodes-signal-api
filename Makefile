@@ -1,3 +1,16 @@
+.PHONY: install lint test build link start stop logs
+
+NODE = docker compose run --rm node
+
+install:
+	$(NODE) npm ci
+
+lint:
+	$(NODE) npm run lint
+
+test:
+	$(NODE) npm test
+
 build:
 	docker compose exec -u root n8n sh -c "npm run build"
 	$(MAKE) start

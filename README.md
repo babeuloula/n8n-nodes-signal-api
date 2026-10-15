@@ -1,6 +1,6 @@
 # n8n node Signal API
 
-This is a n8n community node. It lets you send messages via the [Signal CLI REST API](https://github.com/bbernhard/signal-cli-rest-api) in your n8n workflows.
+This is a n8n community node. It lets you send messages to numbers and groups via the [Signal CLI REST API](https://github.com/bbernhard/signal-cli-rest-api) in your n8n workflows.
 
 Signal CLI REST API is an HTTP wrapper around signal-cli that lets you programmatically send Signal messages (including attachments), using a simple REST interface.
 
@@ -22,11 +22,19 @@ Package name: `n8n-nodes-signal-api`
 
 ## Operations
 
-This node currently provides a single operation: send a Signal message.
+### Message > Send
+
+Send a Signal message to phone numbers or to a group.
 
 Fields:
 - Sender Number (required): E.164 formatted phone number of the sender (for example, +33...).
-- Recipients Numbers (required, multiple): one or more E.164 formatted recipient numbers.
+- Recipient Type: who receives the message.
+  - Numbers (default): one or more phone numbers.
+  - Group: a Signal group.
+- Recipients Numbers (required for Numbers, multiple): one or more E.164 formatted recipient numbers.
+- Group ID (required for Group): identifier of the group. Both formats are accepted, the node converts it to the format expected by the API:
+  - the `id` returned by `GET /v1/groups/{number}` (`group.` followed by base64), for example `group.QWNBaXlF...`;
+  - the `internal_id` (also found as `groupInfo.groupId` in received messages), for example `AcAiyElQ...=`.
 - Message (required): the message body to send.
 - Text Mode: how the message text is processed by the API.
   - styled (default)
@@ -37,6 +45,8 @@ Fields:
     `data:<MIME-TYPE>;filename=<FILENAME>;base64,<BASE64_ENCODED_DATA>`
 
 The node returns the JSON response from the Signal CLI REST API for each input item.
+
+Workflows created with 0.1.x keep working unchanged: they send to numbers.
 
 ## Credentials
 
@@ -63,10 +73,13 @@ Basic usage:
 1. Add the “Signal” node to your workflow.
 2. Select your “Signal API” credentials.
 3. Enter the Sender Number (with country prefix, e.g. +33...).
-4. Add one or more Recipients Numbers.
+4. Choose the Recipient Type: add one or more Recipients Numbers, or set the Group ID.
 5. Write your Message.
 6. Optionally, choose Text Mode, toggle Notify Self, and add Attachments.
 7. Execute the node.
+
+Group ID from a previous node (expression):
+- `{{ $("Finaliser").first().json.groupId }}`
 
 Attachment example:
 - PNG image: `data:image/png;filename=screenshot.png;base64,<base64>`
@@ -86,6 +99,7 @@ Tips:
 
 ## Version history
 
+- 0.2.0 — Send messages to Signal groups.
 - 0.1.0 — Initial release: send messages with optional attachments, text modes (styled/normal), and notify self.
 
 
