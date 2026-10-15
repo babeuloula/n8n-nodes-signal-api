@@ -1,6 +1,6 @@
 # n8n node Signal API
 
-This is a n8n community node. It lets you send messages to numbers and groups via the [Signal CLI REST API](https://github.com/bbernhard/signal-cli-rest-api) in your n8n workflows.
+This is a n8n community node. It lets you send messages to numbers and groups, and receive messages, via the [Signal CLI REST API](https://github.com/bbernhard/signal-cli-rest-api) in your n8n workflows.
 
 Signal CLI REST API is an HTTP wrapper around signal-cli that lets you programmatically send Signal messages (including attachments), using a simple REST interface.
 
@@ -8,6 +8,7 @@ Signal CLI REST API is an HTTP wrapper around signal-cli that lets you programma
 
 [Installation](#installation)  
 [Operations](#operations)  
+[Receiving messages](#receiving-messages)  
 [Credentials](#credentials)  
 [Compatibility](#compatibility)  
 [Usage](#usage)  
@@ -56,6 +57,61 @@ List the Signal groups of the Sender Number (`GET /v1/groups/{number}`). The nod
 - `name`, `description`, `members`, `admins`, `blocked`, `invite_link`, …
 
 Use it once to find the identifier of the group to use in your workflow.
+
+### Signal Trigger
+
+Starts the workflow when a message is received. signal-cli-rest-api pushes every received message to the URL set in its `RECEIVE_WEBHOOK_URL` environment variable (see [Receiving messages](#receiving-messages)).
+
+Each message is output as one item:
+
+| Field | Description |
+| --- | --- |
+| `type` | `message` (received), `sync` (sent from another device of your account), `receipt`, `typing` or `other` |
+| `text` | Message text (`null` if none) |
+| `sourceNumber`, `sourceName`, `sourceUuid` | Sender |
+| `timestamp` | Message timestamp (ms) |
+| `groupId` | `internal_id` of the group, `null` for a direct message |
+| `groupName` | Group name, when provided by signal-cli |
+| `isGroup` | `true` if the message was posted in a group |
+| `isFromMe` | `true` if the message was sent by your own account (e.g. from your phone when signal-cli is a linked device: `syncMessage.sentMessage`) |
+| `account` | Number of the signal-cli account that received the message |
+
+Options:
+- Group ID: only keep messages from this group. Accepts the `id` (`group.…`) or the `internal_id`.
+- Text Messages Only (default: on): ignore read receipts, typing indicators, reactions and other messages without text.
+- Ignore My Own Messages (default: off): ignore messages sent by your own account.
+- Include Raw Envelope (default: off): add the raw envelope received from signal-cli as `rawEnvelope`, for debugging.
+
+The `groupId` output by the trigger can be used as is in the Group ID field of Message > Send to reply in the same group: the node converts it.
+
+## Receiving messages
+
+The Signal Trigger relies on the webhook of signal-cli-rest-api, which is only available in `json-rpc` mode (`json-rpc-native` works too):
+- set `MODE=json-rpc`;
+- set `RECEIVE_WEBHOOK_URL` to the webhook URL of the Signal Trigger node (shown in the node, for example `http://n8n:5678/webhook/<id>/webhook`).
+
+Example `docker-compose.yaml`:
+
+```yaml
+services:
+    signal-cli-rest-api:
+        image: bbernhard/signal-cli-rest-api:0.101
+        restart: unless-stopped
+        environment:
+            - MODE=json-rpc
+            # Production URL of the Signal Trigger node (n8n reachable as "n8n" on the same Docker network)
+            - RECEIVE_WEBHOOK_URL=http://n8n:5678/webhook/<webhook-id>/webhook
+        volumes:
+            - ./signal-cli-config:/home/.local/share/signal-cli
+        ports:
+            - "127.0.0.1:8080:8080"
+```
+
+Notes:
+- Only one URL can be configured. Use the production URL (workflow active); to test in the editor, temporarily switch it to the test URL (`/webhook-test/...`) and click "Listen for test event".
+- `RECEIVE_WEBHOOK_URL` is ignored (the container stops with an error) in `normal` and `native` modes. In `json-rpc` mode, `GET /v1/receive/{number}` becomes a WebSocket and can't be polled.
+- signal-cli-rest-api does not retry: messages received while n8n is down are not delivered again.
+- The webhook is called without authentication: keep the n8n webhook URL private.
 
 ## Credentials
 
@@ -108,7 +164,7 @@ Tips:
 
 ## Version history
 
-- 0.2.0 — Send messages to Signal groups, list groups.
+- 0.2.0 — Send messages to Signal groups, list groups, Signal Trigger.
 - 0.1.0 — Initial release: send messages with optional attachments, text modes (styled/normal), and notify self.
 
 

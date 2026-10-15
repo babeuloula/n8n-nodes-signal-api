@@ -1,7 +1,7 @@
 {
 	"name": "n8n-nodes-signal-api",
 	"version": "0.2.0",
-	"description": "Send messages to Signal numbers and groups with Signal CLI REST API",
+	"description": "Send and receive Signal messages (numbers and groups) with Signal CLI REST API",
 	"license": "MIT",
 	"homepage": "",
 	"keywords": [
@@ -36,7 +36,8 @@
 			"dist/credentials/SignalApi.credentials.js"
 		],
 		"nodes": [
-			"dist/nodes/Signal/Signal.node.js"
+			"dist/nodes/Signal/Signal.node.js",
+			"dist/nodes/SignalTrigger/SignalTrigger.node.js"
 		]
 	},
 	"devDependencies": {

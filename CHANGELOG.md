@@ -6,6 +6,7 @@
 - Message > Send: new "Recipient Type" option (Numbers / Group). In Group mode, the "Group ID" field accepts either the `id` (`group.…`) or the `internal_id` of the group and normalizes it for `POST /v2/send`.
 - Group > Get Many: list the groups of the sender number (`GET /v1/groups/{number}`), one item per group.
 - Group ID field: "From List" mode loading the groups of the sender number.
+- Signal Trigger node: receives messages pushed by signal-cli-rest-api (`RECEIVE_WEBHOOK_URL`, json-rpc mode) and outputs one normalized item per message (`text`, `sourceNumber`, `sourceName`, `timestamp`, `groupId`, `isGroup`, `isFromMe`, …). Handles both `dataMessage` and `syncMessage.sentMessage`. Options: Group ID, Text Messages Only, Ignore My Own Messages, Include Raw Envelope.
 - Unit tests (`npm test` / `make test`) and a `node` tooling service in `docker-compose.yaml` (`make install`, `make lint`, `make test`).
 
 ### Changed
