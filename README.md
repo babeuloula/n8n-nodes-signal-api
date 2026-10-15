@@ -76,6 +76,9 @@ Each message is output as one item:
 | `isFromMe` | `true` if the message was sent by your own account (e.g. from your phone when signal-cli is a linked device: `syncMessage.sentMessage`) |
 | `account` | Number of the signal-cli account that received the message |
 
+Parameters:
+- Path (default: `signal`): path of the webhook URL, which becomes `<n8n URL>/webhook/<path>` (no generated ID). It must be unique across active workflows.
+
 Options:
 - Group ID: only keep messages from this group. Accepts the `id` (`group.…`) or the `internal_id`.
 - Text Messages Only (default: on): ignore read receipts, typing indicators, reactions and other messages without text.
@@ -88,7 +91,7 @@ The `groupId` output by the trigger can be used as is in the Group ID field of M
 
 The Signal Trigger relies on the webhook of signal-cli-rest-api, which is only available in `json-rpc` mode (`json-rpc-native` works too):
 - set `MODE=json-rpc`;
-- set `RECEIVE_WEBHOOK_URL` to the webhook URL of the Signal Trigger node (shown in the node, for example `http://n8n:5678/webhook/<id>/webhook`).
+- set `RECEIVE_WEBHOOK_URL` to the webhook URL of the Signal Trigger node (`<n8n URL>/webhook/<path>`, for example `http://n8n:5678/webhook/signal`).
 
 Example `docker-compose.yaml`:
 
@@ -100,7 +103,7 @@ services:
         environment:
             - MODE=json-rpc
             # Production URL of the Signal Trigger node (n8n reachable as "n8n" on the same Docker network)
-            - RECEIVE_WEBHOOK_URL=http://n8n:5678/webhook/<webhook-id>/webhook
+            - RECEIVE_WEBHOOK_URL=http://n8n:5678/webhook/signal
         volumes:
             - ./signal-cli-config:/home/.local/share/signal-cli
         ports:
@@ -108,7 +111,7 @@ services:
 ```
 
 Notes:
-- Only one URL can be configured. Use the production URL (workflow active); to test in the editor, temporarily switch it to the test URL (`/webhook-test/...`) and click "Listen for test event".
+- Only one URL can be configured. Use the production URL (workflow active); to test in the editor, temporarily switch it to the test URL (`/webhook-test/<path>`) and click "Listen for test event".
 - `RECEIVE_WEBHOOK_URL` is ignored (the container stops with an error) in `normal` and `native` modes. In `json-rpc` mode, `GET /v1/receive/{number}` becomes a WebSocket and can't be polled.
 - signal-cli-rest-api does not retry: messages received while n8n is down are not delivered again.
 - The webhook is called without authentication: keep the n8n webhook URL private.

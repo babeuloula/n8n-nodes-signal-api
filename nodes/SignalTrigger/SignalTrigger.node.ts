@@ -36,7 +36,8 @@ export class SignalTrigger implements INodeType {
 				name: 'default',
 				httpMethod: 'POST',
 				responseMode: 'onReceived',
-				path: 'webhook',
+				path: '={{$parameter["path"]}}',
+				isFullPath: true,
 			},
 		],
 		properties: [
@@ -46,6 +47,16 @@ export class SignalTrigger implements INodeType {
 				name: 'notice',
 				type: 'notice',
 				default: '',
+			},
+			{
+				displayName: 'Path',
+				name: 'path',
+				type: 'string',
+				default: 'signal',
+				placeholder: 'signal',
+				required: true,
+				description:
+					'Path of the webhook URL, without leading slash: the URL becomes [n8n URL]/webhook/[path]. Must be unique across active workflows.',
 			},
 			{
 				displayName: 'Options',
