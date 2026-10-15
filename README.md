@@ -32,7 +32,7 @@ Fields:
   - Numbers (default): one or more phone numbers.
   - Group: a Signal group.
 - Recipients Numbers (required for Numbers, multiple): one or more E.164 formatted recipient numbers.
-- Group ID (required for Group): identifier of the group. Both formats are accepted, the node converts it to the format expected by the API:
+- Group ID (required for Group): pick the group "From List" (groups of the Sender Number, loaded from the API) or enter it "By ID" (expressions supported). Both formats are accepted by ID, the node converts it to the format expected by the API:
   - the `id` returned by `GET /v1/groups/{number}` (`group.` followed by base64), for example `group.QWNBaXlF...`;
   - the `internal_id` (also found as `groupInfo.groupId` in received messages), for example `AcAiyElQ...=`.
 - Message (required): the message body to send.
@@ -47,6 +47,15 @@ Fields:
 The node returns the JSON response from the Signal CLI REST API for each input item.
 
 Workflows created with 0.1.x keep working unchanged: they send to numbers.
+
+### Group > Get Many
+
+List the Signal groups of the Sender Number (`GET /v1/groups/{number}`). The node returns one item per group, with the fields returned by the API, including:
+- `id`: identifier to use in Message > Send (`group.…`);
+- `internal_id`: identifier found in received messages (`groupInfo.groupId`);
+- `name`, `description`, `members`, `admins`, `blocked`, `invite_link`, …
+
+Use it once to find the identifier of the group to use in your workflow.
 
 ## Credentials
 
@@ -99,7 +108,7 @@ Tips:
 
 ## Version history
 
-- 0.2.0 — Send messages to Signal groups.
+- 0.2.0 — Send messages to Signal groups, list groups.
 - 0.1.0 — Initial release: send messages with optional attachments, text modes (styled/normal), and notify self.
 
 

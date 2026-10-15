@@ -1,7 +1,9 @@
 import {
 	IDataObject,
 	IExecuteFunctions,
+	ILoadOptionsFunctions,
 	INodeExecutionData,
+	INodeListSearchResult,
 	INodeType,
 	INodeTypeDescription,
 	NodeOperationError,
@@ -36,6 +38,10 @@ export class Signal implements INodeType {
 				default: 'message',
 				options: [
 					{
+						name: 'Group',
+						value: 'group',
+					},
+					{
 						name: 'Message',
 						value: 'message',
 					},
@@ -57,6 +63,26 @@ export class Signal implements INodeType {
 						name: 'Send',
 						value: 'send',
 						action: 'Send a message',
+					},
+				],
+			},
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				default: 'getAll',
+				displayOptions: {
+					show: {
+						resource: ['group'],
+					},
+				},
+				options: [
+					{
+						name: 'Get Many',
+						value: 'getAll',
+						description: 'List the groups of the sender number',
+						action: 'Get many groups',
 					},
 				],
 			},
@@ -136,6 +162,15 @@ export class Signal implements INodeType {
 					},
 				},
 				modes: [
+					{
+						displayName: 'From List',
+						name: 'list',
+						type: 'list',
+						typeOptions: {
+							searchListMethod: 'searchGroups',
+							searchable: true,
+						},
+					},
 					{
 						displayName: 'By ID',
 						name: 'id',
@@ -223,6 +258,32 @@ export class Signal implements INodeType {
 		],
 	};
 
+	methods = {
+		listSearch: {
+			async searchGroups(
+				this: ILoadOptionsFunctions,
+				filter?: string,
+			): Promise<INodeListSearchResult> {
+				const number = this.getCurrentNodeParameter('number') as string;
+				if (!number) {
+					return { results: [] };
+				}
+
+				const groups = await getGroups.call(this, number);
+				const search = (filter ?? '').toLowerCase();
+
+				return {
+					results: groups
+						.filter((group) => !search || String(group.name ?? '').toLowerCase().includes(search))
+						.map((group) => ({
+							name: (group.name as string) || (group.id as string),
+							value: group.id as string,
+						})),
+				};
+			},
+		},
+	};
+
 	async execute(this: IExecuteFunctions): Promise<NodeOutput> {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
@@ -235,6 +296,10 @@ export class Signal implements INodeType {
 				if (resource === 'message' && operation === 'send') {
 					const response = await sendMessage.call(this, i);
 					returnData.push({ json: response, pairedItem: { item: i } });
+				} else if (resource === 'group' && operation === 'getAll') {
+					const number = this.getNodeParameter('number', i) as string;
+					const groups = await getGroups.call(this, number);
+					returnData.push(...groups.map((group) => ({ json: group, pairedItem: { item: i } })));
 				} else {
 					throw new NodeOperationError(
 						this.getNode(),
@@ -286,4 +351,12 @@ async function sendMessage(this: IExecuteFunctions, i: number): Promise<IDataObj
 	};
 
 	return await signalApiRequest.call(this, 'POST', '/v2/send', body);
+}
+
+async function getGroups(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	number: string,
+): Promise<IDataObject[]> {
+	const groups = await signalApiRequest.call(this, 'GET', `/v1/groups/${encodeURIComponent(number)}`);
+	return Array.isArray(groups) ? groups : [];
 }
