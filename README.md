@@ -166,7 +166,7 @@ These credentials are then selected on the Signal node.
 ## Compatibility
 
 - n8n Nodes API version: 1 (strict mode enabled).
-- Tested with n8n 2.x (2.43). It should work with any modern 1.x or 2.x release. If you encounter issues, please open an issue.
+- Tested with n8n 1.80 and 2.43. It should work with any n8n release from 1.80 onwards. If you encounter issues, please open an issue.
 
 ## Usage
 
@@ -219,6 +219,7 @@ For each release:
 
 ## Version history
 
+- 0.3.1 — Fix loading on n8n versions older than 1.83.
 - 0.3.0 — Replies: quote fields in the Signal Trigger, quote options and object output in Message > Send. First release on npm as `@babeuloula/n8n-nodes-signal-api`.
 - 0.2.0 — Send messages to Signal groups, list groups, Signal Trigger.
 - 0.1.0 — Initial release: send messages with optional attachments, text modes (styled/normal), and notify self.

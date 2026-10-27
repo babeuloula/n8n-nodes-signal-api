@@ -7,7 +7,6 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	NodeApiError,
-	NodeConnectionTypes,
 	NodeOperationError,
 	NodeOutput,
 } from 'n8n-workflow';
@@ -29,8 +28,12 @@ export class Signal implements INodeType {
 		description: 'Send a message with Signal API.',
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		group: ['transform'],
-		inputs: [NodeConnectionTypes.Main],
-		outputs: [NodeConnectionTypes.Main],
+		// 'main' instead of NodeConnectionTypes.Main, which only exists since n8n 1.83:
+		// referencing it makes older versions fail to load the node ("Class could not be found")
+		// eslint-disable-next-line @n8n/community-nodes/node-connection-type-literal
+		inputs: ['main'],
+		// eslint-disable-next-line @n8n/community-nodes/node-connection-type-literal
+		outputs: ['main'],
 		properties: [
 			{
 				displayName: 'Resource',

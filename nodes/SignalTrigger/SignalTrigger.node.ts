@@ -5,7 +5,6 @@ import {
 	INodeTypeDescription,
 	IWebhookFunctions,
 	IWebhookResponseData,
-	NodeConnectionTypes,
 	NodeOperationError,
 } from 'n8n-workflow';
 import { toInternalGroupId } from '../Signal/GroupId';
@@ -33,7 +32,10 @@ export class SignalTrigger implements INodeType {
 			name: 'Signal Trigger',
 		},
 		inputs: [],
-		outputs: [NodeConnectionTypes.Main],
+		// 'main' instead of NodeConnectionTypes.Main, which only exists since n8n 1.83:
+		// referencing it makes older versions fail to load the node ("Class could not be found")
+		// eslint-disable-next-line @n8n/community-nodes/node-connection-type-literal
+		outputs: ['main'],
 		webhooks: [
 			{
 				name: 'default',

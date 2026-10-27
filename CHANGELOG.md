@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.1
+
+### Fixed
+- The nodes failed to load on n8n versions older than 1.83 ("Class could not be found"): they referenced `NodeConnectionTypes`, which does not exist in older `n8n-workflow` versions.
+
 ## 0.3.0
 
 ### Added
