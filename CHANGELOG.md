@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.0
+
+### Added
+- Signal Trigger: `quotedTimestamp` (string), `quotedAuthor` and `quotedText` when the message is a reply, read from `dataMessage.quote` or `syncMessage.sentMessage.quote` (`null` otherwise).
+- Message > Send: options Quote Timestamp, Quote Author and Quote Message (`quote_timestamp`, `quote_author`, `quote_message`) to reply by quoting a message.
+
+### Changed
+- Signal node version 1.1: Message > Send outputs one object per API result (`{ timestamp }`) instead of the raw array (`[{ timestamp }]`). Existing nodes (version 1) keep the previous output.
+
 ## 0.2.0
 
 ### Added

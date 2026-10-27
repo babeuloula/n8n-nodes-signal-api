@@ -55,6 +55,52 @@ const syncSentGroupMessage: IDataObject = {
 	},
 };
 
+// Quote format from signal-cli (JsonQuote): id is the timestamp of the quoted message
+const quote = {
+	id: 1760000000000,
+	author: '+33600000000',
+	authorNumber: '+33600000000',
+	authorUuid: '0c3a1c2e-0000-4000-8000-000000000000',
+	text: 'Quel est le lien ?',
+	attachments: [],
+};
+
+const groupReplyMessage: IDataObject = {
+	...sender,
+	timestamp: 1760000000010,
+	dataMessage: {
+		timestamp: 1760000000010,
+		message: 'https://example.net',
+		expiresInSeconds: 0,
+		viewOnce: false,
+		quote,
+		groupInfo: { groupId: GROUP_INTERNAL_ID, groupName: 'Liens', revision: 3, type: 'DELIVER' },
+	},
+};
+
+const syncReplyMessage: IDataObject = {
+	...syncSentGroupMessage,
+	syncMessage: {
+		sentMessage: {
+			destination: null,
+			destinationNumber: null,
+			timestamp: 1760000000011,
+			message: 'Merci',
+			expiresInSeconds: 0,
+			viewOnce: false,
+			quote: {
+				id: 1760000000010,
+				author: '0c3a1c2e-0000-4000-8000-000000000001',
+				authorNumber: null,
+				authorUuid: '0c3a1c2e-0000-4000-8000-000000000001',
+				text: 'https://example.net',
+				attachments: [],
+			},
+			groupInfo: { groupId: GROUP_INTERNAL_ID, type: 'DELIVER' },
+		},
+	},
+};
+
 const receiptMessage: IDataObject = {
 	...sender,
 	receiptMessage: { when: 1760000000003, isDelivery: false, isRead: true, isViewed: false, timestamps: [1760000000000] },
@@ -98,7 +144,39 @@ describe('normalizeEnvelope', () => {
 			isGroup: true,
 			isFromMe: false,
 			account: ACCOUNT,
+			quotedTimestamp: null,
+			quotedAuthor: null,
+			quotedText: null,
 		});
+	});
+
+	it('extracts the quote of a reply', () => {
+		const message = normalizeEnvelope(groupReplyMessage, ACCOUNT);
+		assert.equal(message.type, 'message');
+		assert.equal(message.text, 'https://example.net');
+		assert.equal(message.quotedTimestamp, '1760000000000');
+		assert.equal(message.quotedAuthor, '+33600000000');
+		assert.equal(message.quotedText, 'Quel est le lien ?');
+	});
+
+	it('extracts the quote of a reply sent from another device of the account', () => {
+		const message = normalizeEnvelope(syncReplyMessage, ACCOUNT);
+		assert.equal(message.type, 'sync');
+		assert.equal(message.isFromMe, true);
+		assert.equal(message.quotedTimestamp, '1760000000010');
+		// No phone number known for the author: fall back to the UUID
+		assert.equal(message.quotedAuthor, '0c3a1c2e-0000-4000-8000-000000000001');
+		assert.equal(message.quotedText, 'https://example.net');
+	});
+
+	it('handles a quote without text (e.g. quoted attachment)', () => {
+		const envelope = {
+			...directDataMessage,
+			dataMessage: { timestamp: 1, message: 'ok', quote: { id: 42, authorNumber: '+33611111111', text: null } },
+		};
+		const message = normalizeEnvelope(envelope, ACCOUNT);
+		assert.equal(message.quotedTimestamp, '42');
+		assert.equal(message.quotedText, null);
 	});
 
 	it('normalizes a direct dataMessage', () => {
@@ -108,6 +186,9 @@ describe('normalizeEnvelope', () => {
 		assert.equal(message.groupId, null);
 		assert.equal(message.isGroup, false);
 		assert.equal(message.isFromMe, false);
+		assert.equal(message.quotedTimestamp, null);
+		assert.equal(message.quotedAuthor, null);
+		assert.equal(message.quotedText, null);
 	});
 
 	it('normalizes a syncMessage.sentMessage sent from another device of the account', () => {

@@ -44,10 +44,16 @@ Fields:
 - Attachments: optional list of base64-encoded attachments.
   - Each attachment must be provided as a data URL in the form:
     `data:<MIME-TYPE>;filename=<FILENAME>;base64,<BASE64_ENCODED_DATA>`
+- Options:
+  - Quote Timestamp: timestamp (ms) of the message to reply to. The message is sent as a reply quoting it (`quote_timestamp`).
+  - Quote Author: number or UUID of the author of the quoted message (`quote_author`). Required with Quote Timestamp.
+  - Quote Message: text of the quoted message, displayed in the quote (`quote_message`).
 
-The node returns the JSON response from the Signal CLI REST API for each input item.
+Output: one item per result returned by the API, for example `{ "timestamp": "1760000000999" }`.
 
-Workflows created with 0.1.x keep working unchanged: they send to numbers.
+Compatibility:
+- Workflows created with 0.1.x keep working unchanged: they send to numbers.
+- Signal nodes added before 0.3.0 (node version 1) keep returning the raw API response, an array: `[{ "timestamp": "…" }]`. Nodes added from 0.3.0 (node version 1.1) return an object. To switch an existing node to the new output, delete it and add it again.
 
 ### Group > Get Many
 
@@ -75,6 +81,9 @@ Each message is output as one item:
 | `isGroup` | `true` if the message was posted in a group |
 | `isFromMe` | `true` if the message was sent by your own account (e.g. from your phone when signal-cli is a linked device: `syncMessage.sentMessage`) |
 | `account` | Number of the signal-cli account that received the message |
+| `quotedTimestamp` | When the message is a reply: timestamp (ms, as a string) of the quoted message, `null` otherwise |
+| `quotedAuthor` | When the message is a reply: number (or UUID if the number is unknown) of the author of the quoted message, `null` otherwise |
+| `quotedText` | When the message is a reply: text of the quoted message, `null` otherwise or if it has no text |
 
 Parameters:
 - Path (default: `signal`): path of the webhook URL, which becomes `<n8n URL>/webhook/<path>` (no generated ID). It must be unique across active workflows.
@@ -86,6 +95,14 @@ Options:
 - Include Raw Envelope (default: off): add the raw envelope received from signal-cli as `rawEnvelope`, for debugging.
 
 The `groupId` output by the trigger can be used as is in the Group ID field of Message > Send to reply in the same group: the node converts it.
+
+To reply by quoting the received message, set in Message > Send:
+- Group ID: `{{ $json.groupId }}`
+- Quote Timestamp: `{{ $json.timestamp }}`
+- Quote Author: `{{ $json.sourceNumber }}`
+- Quote Message: `{{ $json.text }}`
+
+To know which message a received reply answers, compare `quotedTimestamp` with the `timestamp` returned when your message was sent.
 
 ## Receiving messages
 
@@ -167,6 +184,7 @@ Tips:
 
 ## Version history
 
+- 0.3.0 — Replies: quote fields in the Signal Trigger, quote options and object output in Message > Send.
 - 0.2.0 — Send messages to Signal groups, list groups, Signal Trigger.
 - 0.1.0 — Initial release: send messages with optional attachments, text modes (styled/normal), and notify self.
 

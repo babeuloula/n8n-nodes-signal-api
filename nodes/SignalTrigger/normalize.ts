@@ -19,6 +19,9 @@ export interface SignalMessage {
 	isGroup: boolean;
 	isFromMe: boolean;
 	account: string | null;
+	quotedTimestamp: string | null;
+	quotedAuthor: string | null;
+	quotedText: string | null;
 }
 
 function asObject(value: unknown): IDataObject | undefined {
@@ -78,6 +81,10 @@ export function normalizeEnvelope(envelope: IDataObject, account: string | null)
 		type = 'typing';
 	}
 
+	// Reply to a message: `quote.id` is the timestamp of the quoted message
+	const quote = asObject(content?.quote);
+	const quotedId = quote?.id;
+
 	const groupInfo = asObject(content?.groupInfo);
 	const groupId = asString(groupInfo?.groupId);
 
@@ -93,6 +100,13 @@ export function normalizeEnvelope(envelope: IDataObject, account: string | null)
 		isGroup: groupId !== null,
 		isFromMe: sentMessage !== undefined || (account !== null && sourceNumber === account),
 		account,
+		quotedTimestamp:
+			typeof quotedId === 'number' || (typeof quotedId === 'string' && quotedId !== '')
+				? String(quotedId)
+				: null,
+		quotedAuthor:
+			asString(quote?.authorNumber) ?? asString(quote?.authorUuid) ?? asString(quote?.author),
+		quotedText: asString(quote?.text),
 	};
 }
 

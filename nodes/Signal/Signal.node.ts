@@ -241,8 +241,45 @@ export class Signal implements INodeType {
 					},
 				],
 			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add option',
+				default: {},
+				displayOptions: showForSend,
+				options: [
+					{
+						displayName: 'Quote Author',
+						name: 'quoteAuthor',
+						type: 'string',
+						default: '',
+						placeholder: '+33...',
+						description:
+							'Number or UUID of the author of the quoted message (e.g. sourceNumber from the Signal Trigger). Required with Quote Timestamp.',
+					},
+					{
+						displayName: 'Quote Message',
+						name: 'quoteMessage',
+						type: 'string',
+						default: '',
+						description: 'Text of the quoted message, displayed in the quote',
+					},
+					{
+						displayName: 'Quote Timestamp',
+						name: 'quoteTimestamp',
+						type: 'string',
+						default: '',
+						placeholder: '1760000000000',
+						description:
+							'Timestamp (ms) of the message to reply to (e.g. timestamp from the Signal Trigger). The message is sent as a reply quoting it.',
+					},
+				],
+			},
 		],
-		version: 1,
+		// 1.1: Message > Send outputs one object per API result instead of the raw array
+		version: [1, 1.1],
+		defaultVersion: 1.1,
 		displayName: 'Signal',
 		name: 'signal',
 		icon: {
@@ -295,7 +332,14 @@ export class Signal implements INodeType {
 
 				if (resource === 'message' && operation === 'send') {
 					const response = await sendMessage.call(this, i);
-					returnData.push({ json: response, pairedItem: { item: i } });
+					if (this.getNode().typeVersion >= 1.1 && Array.isArray(response)) {
+						returnData.push(
+							...(response as IDataObject[]).map((result) => ({ json: result, pairedItem: { item: i } })),
+						);
+					} else {
+						// Version 1 kept the raw API response (an array) as is
+						returnData.push({ json: response as IDataObject, pairedItem: { item: i } });
+					}
 				} else if (resource === 'group' && operation === 'getAll') {
 					const number = this.getNodeParameter('number', i) as string;
 					const groups = await getGroups.call(this, number);
@@ -320,13 +364,18 @@ export class Signal implements INodeType {
 	}
 }
 
-async function sendMessage(this: IExecuteFunctions, i: number): Promise<IDataObject> {
+async function sendMessage(this: IExecuteFunctions, i: number): Promise<IDataObject | IDataObject[]> {
 	const number = this.getNodeParameter('number', i) as string;
 	const recipientType = this.getNodeParameter('recipientType', i) as string;
 	const base64Attachments = this.getNodeParameter('base64_attachments.attachment', i, []) as Array<{ attachment: string }>;
 	const textMode = this.getNodeParameter('text_mode', i) as string;
 	const message = this.getNodeParameter('message', i) as string;
 	const notifySelf = this.getNodeParameter('notify_self', i) as boolean;
+	const options = this.getNodeParameter('options', i, {}) as {
+		quoteTimestamp?: string | number;
+		quoteAuthor?: string;
+		quoteMessage?: string;
+	};
 
 	let recipients: string[];
 	if (recipientType === 'group') {
@@ -341,7 +390,7 @@ async function sendMessage(this: IExecuteFunctions, i: number): Promise<IDataObj
 		recipients = numbers.map(a => a.recipient);
 	}
 
-	const body = {
+	const body: IDataObject = {
 		number: number,
 		recipients: recipients,
 		message: message,
@@ -349,6 +398,28 @@ async function sendMessage(this: IExecuteFunctions, i: number): Promise<IDataObj
 		text_mode: textMode,
 		base64_attachments: base64Attachments.map(a => a.attachment),
 	};
+
+	const quoteTimestamp = String(options.quoteTimestamp ?? '').trim();
+	if (quoteTimestamp !== '') {
+		const quoteAuthor = (options.quoteAuthor ?? '').trim();
+		if (!/^\d+$/.test(quoteTimestamp)) {
+			throw new NodeOperationError(
+				this.getNode(),
+				`Invalid Quote Timestamp "${quoteTimestamp}": expected a timestamp in milliseconds`,
+				{ itemIndex: i },
+			);
+		}
+		if (quoteAuthor === '') {
+			throw new NodeOperationError(this.getNode(), 'Quote Author is required with Quote Timestamp', {
+				itemIndex: i,
+			});
+		}
+		body.quote_timestamp = Number(quoteTimestamp);
+		body.quote_author = quoteAuthor;
+		if (options.quoteMessage) {
+			body.quote_message = options.quoteMessage;
+		}
+	}
 
 	return await signalApiRequest.call(this, 'POST', '/v2/send', body);
 }
