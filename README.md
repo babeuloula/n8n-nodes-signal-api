@@ -13,13 +13,29 @@ Signal CLI REST API is an HTTP wrapper around signal-cli that lets you programma
 [Compatibility](#compatibility)  
 [Usage](#usage)  
 [Resources](#resources)  
+[Releasing](#releasing)  
 [Version history](#version-history)
 
 ## Installation
 
 Follow the official n8n guide to install community nodes: https://docs.n8n.io/integrations/community-nodes/installation/
 
-Package name: `n8n-nodes-signal-api`
+In n8n, go to **Settings > Community Nodes > Install** and enter:
+
+```
+@babeuloula/n8n-nodes-signal-api
+```
+
+Updates are then available from the same screen.
+
+> The unscoped package `n8n-nodes-signal-api` on npm is a different project, which targets another fork of signal-cli-rest-api. Do not install or update it in place of this one.
+
+### Migrating from a manual install (`n8n-nodes-signal-api`)
+
+Versions up to 0.3.0 were installed manually under the name `n8n-nodes-signal-api`. n8n identifies nodes by package name, so after installing `@babeuloula/n8n-nodes-signal-api`:
+1. Remove the old `n8n-nodes-signal-api` folder from `~/.n8n/nodes/node_modules/` and restart n8n.
+2. In your workflows, replace the Signal nodes, or export the workflow, replace `"type": "n8n-nodes-signal-api.` with `"type": "@babeuloula/n8n-nodes-signal-api.` and import it again.
+3. Credentials are kept: the credential type (`signalApi`) does not change.
 
 ## Operations
 
@@ -150,7 +166,7 @@ These credentials are then selected on the Signal node.
 ## Compatibility
 
 - n8n Nodes API version: 1 (strict mode enabled).
-- Tested with recent n8n 1.x versions. It should work with any modern 1.x release. If you encounter issues on older versions, please open an issue.
+- Tested with n8n 2.x (2.43). It should work with any modern 1.x or 2.x release. If you encounter issues, please open an issue.
 
 ## Usage
 
@@ -182,9 +198,28 @@ Tips:
 - This package repository: https://github.com/babeuloula/n8n-nodes-signal-api
 - Signal Private Messenger: https://signal.org/
 
+## Releasing
+
+Releases are published to npm by GitHub Actions (`.github/workflows/publish.yml`) when a tag matching the version is pushed, with an npm provenance statement (required by n8n for verified community nodes).
+
+One-time setup (npm account `babeuloula`):
+- First release: create a Granular Access Token on npmjs.com (read and write, all packages or the `@babeuloula` scope) and add it as the `NPM_TOKEN` secret of the GitHub repository (Settings > Secrets and variables > Actions).
+- Then (recommended): in the npm package settings, add a Trusted Publisher (GitHub Actions, owner `babeuloula`, repository `n8n-nodes-signal-api`, workflow `publish.yml`) and delete the `NPM_TOKEN` secret.
+
+For each release:
+1. Update `version` in `package.json` (and `package-lock.json`), `CHANGELOG.md` and the version history below, then commit and push.
+2. Create and push a tag with the same version, without `v` prefix:
+   ```bash
+   git tag 0.3.0
+   git push origin 0.3.0
+   ```
+3. The Publish workflow checks that the tag matches `package.json`, runs the tests, lint and build, then publishes to npm.
+
+`npm version <patch|minor|major> --no-git-tag-version` updates both `package.json` and `package-lock.json`. Avoid `npm run release` locally: it regenerates `CHANGELOG.md` from the git history.
+
 ## Version history
 
-- 0.3.0 — Replies: quote fields in the Signal Trigger, quote options and object output in Message > Send.
+- 0.3.0 — Replies: quote fields in the Signal Trigger, quote options and object output in Message > Send. First release on npm as `@babeuloula/n8n-nodes-signal-api`.
 - 0.2.0 — Send messages to Signal groups, list groups, Signal Trigger.
 - 0.1.0 — Initial release: send messages with optional attachments, text modes (styled/normal), and notify self.
 

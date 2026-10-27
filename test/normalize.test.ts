@@ -1,5 +1,6 @@
 // Unit tests run with node:test and are not shipped in the package
-/* eslint-disable @n8n/community-nodes/no-restricted-imports */
+// Fixtures contain fake UUIDs, not secrets
+/* eslint-disable @n8n/community-nodes/no-restricted-imports, @n8n/community-nodes/no-hardcoded-secrets */
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import type { IDataObject } from 'n8n-workflow';

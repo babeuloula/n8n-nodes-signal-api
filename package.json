@@ -1,9 +1,9 @@
 {
-	"name": "n8n-nodes-signal-api",
+	"name": "@babeuloula/n8n-nodes-signal-api",
 	"version": "0.3.0",
 	"description": "Send and receive Signal messages (numbers and groups) with Signal CLI REST API",
 	"license": "MIT",
-	"homepage": "",
+	"homepage": "https://github.com/babeuloula/n8n-nodes-signal-api#readme",
 	"keywords": [
 		"n8n-community-node-package",
 		"signal-api"
@@ -15,6 +15,9 @@
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/babeuloula/n8n-nodes-signal-api.git"
+	},
+	"bugs": {
+		"url": "https://github.com/babeuloula/n8n-nodes-signal-api/issues"
 	},
 	"scripts": {
 		"build": "n8n-node build",
@@ -29,6 +32,12 @@
 	"files": [
 		"dist"
 	],
+	"publishConfig": {
+		"access": "public"
+	},
+	"engines": {
+		"node": ">=22"
+	},
 	"n8n": {
 		"n8nNodesApiVersion": 1,
 		"strict": true,
@@ -41,7 +50,7 @@
 		]
 	},
 	"devDependencies": {
-		"@n8n/node-cli": "*",
+		"@n8n/node-cli": "^0.54.3",
 		"@types/node": "^22.20.5",
 		"eslint": "9.32.0",
 		"prettier": "3.6.2",

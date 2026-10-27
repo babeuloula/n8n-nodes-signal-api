@@ -6,6 +6,8 @@ import {
 	INodeListSearchResult,
 	INodeType,
 	INodeTypeDescription,
+	NodeApiError,
+	NodeConnectionTypes,
 	NodeOperationError,
 	NodeOutput,
 } from 'n8n-workflow';
@@ -27,8 +29,8 @@ export class Signal implements INodeType {
 		description: 'Send a message with Signal API.',
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		group: ['transform'],
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
 				displayName: 'Resource',
@@ -356,7 +358,9 @@ export class Signal implements INodeType {
 					returnData.push({ json: { error: error.message }, pairedItem: { item: i } });
 					continue;
 				}
-				throw error;
+				throw error instanceof NodeApiError || error instanceof NodeOperationError
+					? error
+					: new NodeOperationError(this.getNode(), error, { itemIndex: i });
 			}
 		}
 

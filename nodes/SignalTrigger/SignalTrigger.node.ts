@@ -5,17 +5,20 @@ import {
 	INodeTypeDescription,
 	IWebhookFunctions,
 	IWebhookResponseData,
+	NodeConnectionTypes,
 	NodeOperationError,
 } from 'n8n-workflow';
 import { toInternalGroupId } from '../Signal/GroupId';
 import { extractEnvelopes, matchesFilters, normalizeEnvelope } from './normalize';
 
-// A trigger cannot be used as an AI tool
-// eslint-disable-next-line @n8n/community-nodes/node-usable-as-tool
+// No webhookMethods: signal-cli-rest-api has no API to register a webhook, its URL is
+// set once with the RECEIVE_WEBHOOK_URL environment variable (see README)
+// eslint-disable-next-line @n8n/community-nodes/webhook-lifecycle-complete
 export class SignalTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Signal Trigger',
 		name: 'signalTrigger',
+		subtitle: '={{"/webhook/" + $parameter["path"]}}',
 		icon: {
 			light: 'file:../../icons/signal.svg',
 			dark: 'file:../../icons/signal.dark.svg',
@@ -30,7 +33,7 @@ export class SignalTrigger implements INodeType {
 			name: 'Signal Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionTypes.Main],
 		webhooks: [
 			{
 				name: 'default',

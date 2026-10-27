@@ -1,9 +1,11 @@
-import type {
-	IDataObject,
-	IExecuteFunctions,
-	IHttpRequestMethods,
-	IHttpRequestOptions,
-	ILoadOptionsFunctions,
+import {
+	type IDataObject,
+	type IExecuteFunctions,
+	type IHttpRequestMethods,
+	type IHttpRequestOptions,
+	type ILoadOptionsFunctions,
+	type JsonObject,
+	NodeApiError,
 } from 'n8n-workflow';
 
 export async function signalApiRequest(
@@ -15,17 +17,11 @@ export async function signalApiRequest(
 ) {
 	const credentials = await this.getCredentials('signalApi');
 	const baseUrl = credentials.baseUrl as string;
-	const username = credentials.username as string;
-	const password = credentials.password as string;
 
+	// Basic auth is added by the `authenticate` property of the credential
 	const options: IHttpRequestOptions = {
 		url: baseUrl + path,
 		method,
-		auth: {
-			username,
-			password,
-			sendImmediately: true,
-		},
 		headers: {
 			'Content-Type': 'application/json',
 		},
@@ -34,5 +30,9 @@ export async function signalApiRequest(
 		qs,
 	};
 
-	return await this.helpers.httpRequest(options);
+	try {
+		return await this.helpers.httpRequestWithAuthentication.call(this, 'signalApi', options);
+	} catch (error) {
+		throw new NodeApiError(this.getNode(), error as JsonObject);
+	}
 }

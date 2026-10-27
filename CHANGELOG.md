@@ -8,6 +8,9 @@
 
 ### Changed
 - Signal node version 1.1: Message > Send outputs one object per API result (`{ timestamp }`) instead of the raw array (`[{ timestamp }]`). Existing nodes (version 1) keep the previous output.
+- Package renamed to `@babeuloula/n8n-nodes-signal-api` and published on npm (the unscoped name belongs to another project). Node types change accordingly, see "Migrating from a manual install" in the README.
+- API errors are reported as `NodeApiError`; requests use the credential authentication (`httpRequestWithAuthentication`).
+- Tooling: `@n8n/node-cli` 0.54, GitHub Actions publish workflow with npm provenance, triggered by version tags.
 
 ## 0.2.0
 

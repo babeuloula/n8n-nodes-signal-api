@@ -21,12 +21,15 @@ services:
 
     # Tooling container (npm install, lint, tests) without starting n8n: `make install|lint|test`
     node:
-        image: node:22-alpine
+        image: node:22
         profiles: ["tools"]
         user: 1000:1000
+        environment:
+            - HOME=/tmp
         volumes:
-            - .:/srv
-        working_dir: /srv
+            # Not mounted at /srv: the n8n lint plugin does not find a package.json at the root of a top-level directory
+            - .:/usr/src/app
+        working_dir: /usr/src/app
 
 volumes:
     n8n:
