@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+- Release process: pushing a version tag is enough, the Publish workflow sets the version in `package.json` / `package-lock.json`, releases the "Unreleased" section of the changelog and commits them on main.
+
 ## 0.3.1
 
 ### Fixed

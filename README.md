@@ -200,28 +200,36 @@ Tips:
 
 ## Releasing
 
-Releases are published to npm by GitHub Actions (`.github/workflows/publish.yml`) when a tag matching the version is pushed, with an npm provenance statement (required by n8n for verified community nodes).
+Releases are published to npm by GitHub Actions (`.github/workflows/publish.yml`) when a version tag is pushed, with an npm provenance statement (required by n8n for verified community nodes). The tag is the source of truth for the version.
 
-One-time setup (npm account `babeuloula`):
-- First release: create a Granular Access Token on npmjs.com (read and write, all packages or the `@babeuloula` scope) and add it as the `NPM_TOKEN` secret of the GitHub repository (Settings > Secrets and variables > Actions).
-- Then (recommended): in the npm package settings, add a Trusted Publisher (GitHub Actions, owner `babeuloula`, repository `n8n-nodes-signal-api`, workflow `publish.yml`) and delete the `NPM_TOKEN` secret.
+One-time setup:
+- npm authentication: either a Trusted Publisher on npmjs.com (package settings > Trusted Publishers > GitHub Actions, repository `babeuloula/n8n-nodes-signal-api`, workflow `publish.yml`), or a Granular Access Token (read and write, "bypass 2FA" enabled) stored in the `NPM_TOKEN` secret of the repository.
+- If `main` is protected, allow GitHub Actions to push to it (the workflow commits the version bump).
 
-For each release:
-1. Update `version` in `package.json` (and `package-lock.json`), `CHANGELOG.md` and the version history below, then commit and push.
-2. Create and push a tag with the same version, without `v` prefix:
-   ```bash
-   git tag 0.3.0
-   git push origin 0.3.0
-   ```
-3. The Publish workflow checks that the tag matches `package.json`, runs the tests, lint and build, then publishes to npm.
+While developing, add the changes under `## Unreleased` in `CHANGELOG.md`.
 
-`npm version <patch|minor|major> --no-git-tag-version` updates both `package.json` and `package-lock.json`. Avoid `npm run release` locally: it regenerates `CHANGELOG.md` from the git history.
+To release, tag the last commit of `main` (no `v` prefix) and push the tag:
+
+```bash
+git pull
+git tag 0.4.0
+git push origin 0.4.0
+```
+
+The Publish workflow then:
+1. checks that the tagged commit is on `main` and that the tag is the next patch, minor or major version (a typo such as `3.0.0` instead of `0.3.0` is rejected);
+2. sets the version in `package.json` and `package-lock.json`, and renames `## Unreleased` to `## 0.4.0` in `CHANGELOG.md` (if the section is empty, it lists the commits since the previous tag);
+3. runs the tests, the lint and the build, and publishes to npm;
+4. commits these changes on `main` (`chore(release): 0.4.0`). Run `git pull` afterwards.
+
+If a run fails before publishing, fix the issue on `main`, then move the tag and push it again:
+
+```bash
+git tag -f 0.4.0 && git push -f origin 0.4.0
+```
 
 ## Version history
 
-- 0.3.1 — Fix loading on n8n versions older than 1.83.
-- 0.3.0 — Replies: quote fields in the Signal Trigger, quote options and object output in Message > Send. First release on npm as `@babeuloula/n8n-nodes-signal-api`.
-- 0.2.0 — Send messages to Signal groups, list groups, Signal Trigger.
-- 0.1.0 — Initial release: send messages with optional attachments, text modes (styled/normal), and notify self.
+See [CHANGELOG.md](CHANGELOG.md).
 
 
