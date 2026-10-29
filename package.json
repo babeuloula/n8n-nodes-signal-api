@@ -1,6 +1,6 @@
 {
 	"name": "@babeuloula/n8n-nodes-signal-api",
-	"version": "0.3.1",
+	"version": "0.4.0",
 	"description": "Send and receive Signal messages (numbers and groups) with Signal CLI REST API",
 	"license": "MIT",
 	"homepage": "https://github.com/babeuloula/n8n-nodes-signal-api#readme",

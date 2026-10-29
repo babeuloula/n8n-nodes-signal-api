@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.4.0
+
 ### Added
 - Credentials: Sender Number, the phone number of the signal-cli account used by the Signal node.
 - Contact > Get Many: list the contacts of the sender number (`GET /v1/contacts/{number}`), one item per contact. Option All Recipients to also return the recipients that are not in the contact list.
