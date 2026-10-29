@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.5.0
+
 ### Added
 - Message > Send (node version 1.3): numbers, contacts and groups can be combined in the same message. The "Recipient Type" selector is replaced by three fields: Recipients Numbers, Contacts and Groups (picked from the groups of the sender number, several allowed). As the API accepts a single group per request, without numbers, the node sends one request for the numbers and contacts, then one per group. Each result includes the `recipients` of its request. Existing nodes (versions 1 to 1.2) keep the Recipient Type selector.
 
