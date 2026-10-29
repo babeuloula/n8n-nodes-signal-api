@@ -43,13 +43,14 @@ Versions up to 0.3.0 were installed manually under the name `n8n-nodes-signal-ap
 
 Send a Signal message to phone numbers or to a group.
 
+The message is sent from the Sender Number of the credentials.
+
 Fields:
-- Sender Number (required): E.164 formatted phone number of the sender (for example, +33...).
 - Recipient Type: who receives the message.
   - Numbers (default): one or more phone numbers.
   - Group: a Signal group.
 - Recipients Numbers (required for Numbers, multiple): one or more E.164 formatted recipient numbers.
-- Group ID (required for Group): pick the group "From List" (groups of the Sender Number, loaded from the API) or enter it "By ID" (expressions supported). Both formats are accepted by ID, the node converts it to the format expected by the API:
+- Group ID (required for Group): pick the group "From List" (groups of the Sender Number of the credentials, loaded from the API) or enter it "By ID" (expressions supported). Both formats are accepted by ID, the node converts it to the format expected by the API:
   - the `id` returned by `GET /v1/groups/{number}` (`group.` followed by base64), for example `group.QWNBaXlF...`;
   - the `internal_id` (also found as `groupInfo.groupId` in received messages), for example `AcAiyElQ...=`.
 - Message (required): the message body to send.
@@ -70,10 +71,11 @@ Output: one item per result returned by the API, for example `{ "timestamp": "17
 Compatibility:
 - Workflows created with 0.1.x keep working unchanged: they send to numbers.
 - Signal nodes added before 0.3.0 (node version 1) keep returning the raw API response, an array: `[{ "timestamp": "…" }]`. Nodes added from 0.3.0 (node version 1.1) return an object. To switch an existing node to the new output, delete it and add it again.
+- Signal nodes added before the Sender Number moved to the credentials (node versions 1 and 1.1) keep their "Sender Number" field. When it is empty, the Sender Number of the credentials is used. Newer nodes (version 1.2) only use the credentials.
 
 ### Group > Get Many
 
-List the Signal groups of the Sender Number (`GET /v1/groups/{number}`). The node returns one item per group, with the fields returned by the API, including:
+List the Signal groups of the Sender Number of the credentials (`GET /v1/groups/{number}`). The node returns one item per group, with the fields returned by the API, including:
 - `id`: identifier to use in Message > Send (`group.…`);
 - `internal_id`: identifier found in received messages (`groupInfo.groupId`);
 - `name`, `description`, `members`, `admins`, `blocked`, `invite_link`, …
@@ -159,7 +161,8 @@ Create credentials in n8n:
 1. Go to Credentials and create new “Signal API” credentials.
 2. Base URL: the base URL of your Signal CLI REST API (without trailing slash), for example `http://localhost:8080`.
 3. User and Password: basic auth credentials configured on your API server.
-4. Use the “Test” button; the node performs a GET request to `<baseUrl>/v1/about` to verify connectivity.
+4. Sender Number: E.164 formatted phone number of the signal-cli account used to send messages and list groups (for example, +33...).
+5. Use the “Test” button; the node performs a GET request to `<baseUrl>/v1/about` to verify connectivity.
 
 These credentials are then selected on the Signal node.
 
@@ -172,12 +175,11 @@ These credentials are then selected on the Signal node.
 
 Basic usage:
 1. Add the “Signal” node to your workflow.
-2. Select your “Signal API” credentials.
-3. Enter the Sender Number (with country prefix, e.g. +33...).
-4. Choose the Recipient Type: add one or more Recipients Numbers, or set the Group ID.
-5. Write your Message.
-6. Optionally, choose Text Mode, toggle Notify Self, and add Attachments.
-7. Execute the node.
+2. Select your “Signal API” credentials (the Sender Number is set there).
+3. Choose the Recipient Type: add one or more Recipients Numbers, or set the Group ID.
+4. Write your Message.
+5. Optionally, choose Text Mode, toggle Notify Self, and add Attachments.
+6. Execute the node.
 
 Group ID from a previous node (expression):
 - `{{ $("Finaliser").first().json.groupId }}`

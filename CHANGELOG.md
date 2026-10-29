@@ -2,7 +2,11 @@
 
 ## Unreleased
 
+### Added
+- Credentials: Sender Number, the phone number of the signal-cli account used by the Signal node.
+
 ### Changed
+- Signal node version 1.2: the sender number is read from the credentials, the "Sender Number" field of the node is removed. It is also used to load the groups ("From List"). Existing nodes (versions 1 and 1.1) keep their field, and fall back to the number of the credentials when it is empty.
 - Release process: pushing a version tag is enough, the Publish workflow sets the version in `package.json` / `package-lock.json`, releases the "Unreleased" section of the changelog and commits them on main.
 
 ## 0.3.1

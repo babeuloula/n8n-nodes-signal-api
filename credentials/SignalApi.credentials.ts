@@ -39,6 +39,15 @@ export class SignalApi implements ICredentialType {
 			typeOptions: { password: true },
 			default: '',
 		},
+		{
+			displayName: 'Sender Number',
+			name: 'number',
+			type: 'string',
+			default: '',
+			required: true,
+			description: 'Phone number of the signal-cli account used to send messages (with prefix)',
+			placeholder: '+33...',
+		},
 	];
 
 	authenticate: IAuthenticateGeneric = {

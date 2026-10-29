@@ -11,7 +11,7 @@ import {
 	NodeOutput,
 } from 'n8n-workflow';
 import { toSendGroupId } from './GroupId';
-import { signalApiRequest } from './transport';
+import { getSenderNumber, signalApiRequest } from './transport';
 
 const showForSend = {
 	show: {
@@ -99,6 +99,12 @@ export class Signal implements INodeType {
 				required: true,
 				description: 'Phone number of the sender (with prefix)',
 				placeholder: '+33...',
+				// From version 1.2, the sender number is set in the credentials
+				displayOptions: {
+					show: {
+						'@version': [1, 1.1],
+					},
+				},
 			},
 			{
 				displayName: 'Recipient Type',
@@ -283,8 +289,9 @@ export class Signal implements INodeType {
 			},
 		],
 		// 1.1: Message > Send outputs one object per API result instead of the raw array
-		version: [1, 1.1],
-		defaultVersion: 1.1,
+		// 1.2: the sender number is read from the credentials, the node field is removed
+		version: [1, 1.1, 1.2],
+		defaultVersion: 1.2,
 		displayName: 'Signal',
 		name: 'signal',
 		icon: {
@@ -306,8 +313,10 @@ export class Signal implements INodeType {
 				this: ILoadOptionsFunctions,
 				filter?: string,
 			): Promise<INodeListSearchResult> {
-				const number = this.getCurrentNodeParameter('number') as string;
-				if (!number) {
+				let number: string;
+				try {
+					number = await getSenderNumber.call(this);
+				} catch {
 					return { results: [] };
 				}
 
@@ -346,7 +355,7 @@ export class Signal implements INodeType {
 						returnData.push({ json: response as IDataObject, pairedItem: { item: i } });
 					}
 				} else if (resource === 'group' && operation === 'getAll') {
-					const number = this.getNodeParameter('number', i) as string;
+					const number = await getSenderNumber.call(this, i);
 					const groups = await getGroups.call(this, number);
 					returnData.push(...groups.map((group) => ({ json: group, pairedItem: { item: i } })));
 				} else {
@@ -372,7 +381,7 @@ export class Signal implements INodeType {
 }
 
 async function sendMessage(this: IExecuteFunctions, i: number): Promise<IDataObject | IDataObject[]> {
-	const number = this.getNodeParameter('number', i) as string;
+	const number = await getSenderNumber.call(this, i);
 	const recipientType = this.getNodeParameter('recipientType', i) as string;
 	const base64Attachments = this.getNodeParameter('base64_attachments.attachment', i, []) as Array<{ attachment: string }>;
 	const textMode = this.getNodeParameter('text_mode', i) as string;
