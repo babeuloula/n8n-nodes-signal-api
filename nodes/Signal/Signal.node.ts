@@ -2,6 +2,7 @@ import {
 	IDataObject,
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
+	INodePropertyOptions,
 	INodeExecutionData,
 	INodeListSearchResult,
 	INodeType,
@@ -10,6 +11,7 @@ import {
 	NodeOperationError,
 	NodeOutput,
 } from 'n8n-workflow';
+import { type SignalContact, toContactOptions } from './Contact';
 import { toSendGroupId } from './GroupId';
 import { getSenderNumber, signalApiRequest } from './transport';
 
@@ -42,6 +44,10 @@ export class Signal implements INodeType {
 				noDataExpression: true,
 				default: 'message',
 				options: [
+					{
+						name: 'Contact',
+						value: 'contact',
+					},
 					{
 						name: 'Group',
 						value: 'group',
@@ -92,6 +98,49 @@ export class Signal implements INodeType {
 				],
 			},
 			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				default: 'getAll',
+				displayOptions: {
+					show: {
+						resource: ['contact'],
+					},
+				},
+				options: [
+					{
+						name: 'Get Many',
+						value: 'getAll',
+						description: 'List the contacts of the sender number',
+						action: 'Get many contacts',
+					},
+				],
+			},
+			{
+				displayName: 'Options',
+				name: 'contactOptions',
+				type: 'collection',
+				placeholder: 'Add option',
+				default: {},
+				displayOptions: {
+					show: {
+						resource: ['contact'],
+						operation: ['getAll'],
+					},
+				},
+				options: [
+					{
+						displayName: 'All Recipients',
+						name: 'allRecipients',
+						type: 'boolean',
+						default: false,
+						description:
+							'Whether to also return the recipients that are not in the contact list (e.g. members of groups)',
+					},
+				],
+			},
+			{
 				displayName: 'Sender Number',
 				name: 'number',
 				type: 'string',
@@ -119,11 +168,37 @@ export class Signal implements INodeType {
 						description: 'Send to one or more phone numbers',
 					},
 					{
+						name: 'Contacts',
+						value: 'contacts',
+						description: 'Send to one or more contacts of the sender number',
+					},
+					{
 						name: 'Group',
 						value: 'group',
 						description: 'Send to a Signal group',
 					},
 				],
+			},
+			{
+				displayName: 'Contact Names or IDs',
+				name: 'contacts',
+				type: 'multiOptions',
+				default: [],
+				required: true,
+				displayOptions: {
+					show: {
+						...showForSend.show,
+						recipientType: ['contacts'],
+					},
+				},
+				description:
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+				hint: 'Contacts of the sender number. With an expression: numbers or UUIDs, as an array or a comma-separated list.',
+				typeOptions: {
+					loadOptionsMethod: 'getContacts',
+					// Versions 1 and 1.1 have a "Sender Number" field
+					loadOptionsDependsOn: ['number'],
+				},
 			},
 			{
 				displayName: 'Recipients Numbers',
@@ -308,6 +383,18 @@ export class Signal implements INodeType {
 	};
 
 	methods = {
+		loadOptions: {
+			async getContacts(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				let number: string;
+				try {
+					number = await getSenderNumber.call(this);
+				} catch {
+					return [];
+				}
+
+				return toContactOptions(await getContacts.call(this, number));
+			},
+		},
 		listSearch: {
 			async searchGroups(
 				this: ILoadOptionsFunctions,
@@ -358,6 +445,15 @@ export class Signal implements INodeType {
 					const number = await getSenderNumber.call(this, i);
 					const groups = await getGroups.call(this, number);
 					returnData.push(...groups.map((group) => ({ json: group, pairedItem: { item: i } })));
+				} else if (resource === 'contact' && operation === 'getAll') {
+					const number = await getSenderNumber.call(this, i);
+					const { allRecipients } = this.getNodeParameter('contactOptions', i, {}) as {
+						allRecipients?: boolean;
+					};
+					const contacts = await getContacts.call(this, number, allRecipients ?? false);
+					returnData.push(
+						...contacts.map((contact) => ({ json: contact as IDataObject, pairedItem: { item: i } })),
+					);
 				} else {
 					throw new NodeOperationError(
 						this.getNode(),
@@ -400,6 +496,15 @@ async function sendMessage(this: IExecuteFunctions, i: number): Promise<IDataObj
 			recipients = [toSendGroupId(groupId)];
 		} catch (error) {
 			throw new NodeOperationError(this.getNode(), error.message, { itemIndex: i });
+		}
+	} else if (recipientType === 'contacts') {
+		const contacts = this.getNodeParameter('contacts', i, []) as string | string[];
+		// An expression can return a single value or a comma-separated list
+		recipients = (Array.isArray(contacts) ? contacts : String(contacts).split(','))
+			.map((contact) => String(contact).trim())
+			.filter((contact) => contact !== '');
+		if (recipients.length === 0) {
+			throw new NodeOperationError(this.getNode(), 'Select at least one contact', { itemIndex: i });
 		}
 	} else {
 		const numbers = this.getNodeParameter('recipients.recipient', i, []) as Array<{ recipient: string }>;
@@ -446,4 +551,19 @@ async function getGroups(
 ): Promise<IDataObject[]> {
 	const groups = await signalApiRequest.call(this, 'GET', `/v1/groups/${encodeURIComponent(number)}`);
 	return Array.isArray(groups) ? groups : [];
+}
+
+async function getContacts(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	number: string,
+	allRecipients = false,
+): Promise<SignalContact[]> {
+	const contacts = await signalApiRequest.call(
+		this,
+		'GET',
+		`/v1/contacts/${encodeURIComponent(number)}`,
+		undefined,
+		allRecipients ? { all_recipients: true } : undefined,
+	);
+	return Array.isArray(contacts) ? contacts : [];
 }

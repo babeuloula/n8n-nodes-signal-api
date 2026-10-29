@@ -41,15 +41,17 @@ Versions up to 0.3.0 were installed manually under the name `n8n-nodes-signal-ap
 
 ### Message > Send
 
-Send a Signal message to phone numbers or to a group.
+Send a Signal message to phone numbers, contacts or a group.
 
 The message is sent from the Sender Number of the credentials.
 
 Fields:
 - Recipient Type: who receives the message.
   - Numbers (default): one or more phone numbers.
+  - Contacts: one or more contacts of the Sender Number.
   - Group: a Signal group.
 - Recipients Numbers (required for Numbers, multiple): one or more E.164 formatted recipient numbers.
+- Contacts (required for Contacts): pick the contacts from the list (contacts of the Sender Number of the credentials, loaded from the API), or use an expression returning numbers or UUIDs, as an array or a comma-separated list.
 - Group ID (required for Group): pick the group "From List" (groups of the Sender Number of the credentials, loaded from the API) or enter it "By ID" (expressions supported). Both formats are accepted by ID, the node converts it to the format expected by the API:
   - the `id` returned by `GET /v1/groups/{number}` (`group.` followed by base64), for example `group.QWNBaXlF...`;
   - the `internal_id` (also found as `groupInfo.groupId` in received messages), for example `AcAiyElQ...=`.
@@ -81,6 +83,13 @@ List the Signal groups of the Sender Number of the credentials (`GET /v1/groups/
 - `name`, `description`, `members`, `admins`, `blocked`, `invite_link`, …
 
 Use it once to find the identifier of the group to use in your workflow.
+
+### Contact > Get Many
+
+List the contacts of the Sender Number of the credentials (`GET /v1/contacts/{number}`). The node returns one item per contact, with the fields returned by the API, including `number`, `uuid`, `name`, `profile_name`, `username`, `blocked`, …
+
+Options:
+- All Recipients (default: off): also return the recipients that are not in the contact list, for example members of your groups (`all_recipients`).
 
 ### Signal Trigger
 
@@ -161,7 +170,7 @@ Create credentials in n8n:
 1. Go to Credentials and create new “Signal API” credentials.
 2. Base URL: the base URL of your Signal CLI REST API (without trailing slash), for example `http://localhost:8080`.
 3. User and Password: basic auth credentials configured on your API server.
-4. Sender Number: E.164 formatted phone number of the signal-cli account used to send messages and list groups (for example, +33...).
+4. Sender Number: E.164 formatted phone number of the signal-cli account used to send messages and list groups and contacts (for example, +33...).
 5. Use the “Test” button; the node performs a GET request to `<baseUrl>/v1/about` to verify connectivity.
 
 These credentials are then selected on the Signal node.
@@ -176,7 +185,7 @@ These credentials are then selected on the Signal node.
 Basic usage:
 1. Add the “Signal” node to your workflow.
 2. Select your “Signal API” credentials (the Sender Number is set there).
-3. Choose the Recipient Type: add one or more Recipients Numbers, or set the Group ID.
+3. Choose the Recipient Type: add one or more Recipients Numbers, pick Contacts, or set the Group ID.
 4. Write your Message.
 5. Optionally, choose Text Mode, toggle Notify Self, and add Attachments.
 6. Execute the node.

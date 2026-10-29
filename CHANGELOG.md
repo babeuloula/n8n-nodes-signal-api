@@ -4,6 +4,8 @@
 
 ### Added
 - Credentials: Sender Number, the phone number of the signal-cli account used by the Signal node.
+- Contact > Get Many: list the contacts of the sender number (`GET /v1/contacts/{number}`), one item per contact. Option All Recipients to also return the recipients that are not in the contact list.
+- Message > Send: new Recipient Type "Contacts", to pick one or more contacts of the sender number from a list (numbers or UUIDs with an expression).
 
 ### Changed
 - Signal node version 1.2: the sender number is read from the credentials, the "Sender Number" field of the node is removed. It is also used to load the groups ("From List"). Existing nodes (versions 1 and 1.1) keep their field, and fall back to the number of the credentials when it is empty.
