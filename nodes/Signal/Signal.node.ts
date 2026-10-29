@@ -5,6 +5,7 @@ import {
 	INodePropertyOptions,
 	INodeExecutionData,
 	INodeListSearchResult,
+	INodeProperties,
 	INodeType,
 	INodeTypeDescription,
 	NodeApiError,
@@ -13,12 +14,75 @@ import {
 } from 'n8n-workflow';
 import { type SignalContact, toContactOptions } from './Contact';
 import { toSendGroupId } from './GroupId';
+import { toList, toSendBatches } from './Recipients';
 import { getSenderNumber, signalApiRequest } from './transport';
+
+// Version 1.3 combines numbers, contacts and groups in a single message
+const RECIPIENTS_COMBINED_VERSION = 1.3;
+
+const showForMessageSend = {
+	resource: ['message'],
+	operation: ['send'],
+};
 
 const showForSend = {
 	show: {
-		resource: ['message'],
-		operation: ['send'],
+		...showForMessageSend,
+		'@version': [{ _cnd: { gte: RECIPIENTS_COMBINED_VERSION } }],
+	},
+};
+
+const showForLegacySend = {
+	show: {
+		...showForMessageSend,
+		'@version': [1, 1.1, 1.2],
+	},
+};
+
+const showForAnySend = {
+	show: showForMessageSend,
+};
+
+const recipientNumbersField: INodeProperties = {
+	displayName: 'Recipients Numbers',
+	name: 'recipients',
+	type: 'fixedCollection',
+	default: {},
+	description: 'Phone numbers of the recipients (with prefix)',
+	placeholder: 'Add a recipient number',
+	typeOptions: {
+		multipleValues: true,
+	},
+	options: [
+		{
+			displayName: 'Recipient Number',
+			name: 'recipient',
+			values: [
+				{
+					displayName: 'Recipient',
+					name: 'recipient',
+					type: 'string',
+					default: '',
+					placeholder: '+33...',
+					description: 'Phone number',
+				},
+			],
+		},
+	],
+};
+
+const contactsField: INodeProperties = {
+	displayName: 'Contact Names or IDs',
+	name: 'contacts',
+	type: 'multiOptions',
+	default: [],
+	description:
+		'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+	hint: 'Contacts of the sender number. With an expression: numbers or UUIDs, as an array or a comma-separated list.',
+	typeOptions: {
+		loadOptionsMethod: 'getContacts',
+		// Versions 1 and 1.1 have a "Sender Number" field
+		loadOptionsDependsOn: ['number'],
 	},
 };
 
@@ -155,12 +219,13 @@ export class Signal implements INodeType {
 					},
 				},
 			},
+			// Versions 1 to 1.2: one type of recipient per message
 			{
 				displayName: 'Recipient Type',
 				name: 'recipientType',
 				type: 'options',
 				default: 'numbers',
-				displayOptions: showForSend,
+				displayOptions: showForLegacySend,
 				options: [
 					{
 						name: 'Numbers',
@@ -180,59 +245,24 @@ export class Signal implements INodeType {
 				],
 			},
 			{
-				displayName: 'Contact Names or IDs',
-				name: 'contacts',
-				type: 'multiOptions',
-				default: [],
+				...contactsField,
 				required: true,
 				displayOptions: {
 					show: {
-						...showForSend.show,
+						...showForLegacySend.show,
 						recipientType: ['contacts'],
 					},
 				},
-				description:
-					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
-				hint: 'Contacts of the sender number. With an expression: numbers or UUIDs, as an array or a comma-separated list.',
-				typeOptions: {
-					loadOptionsMethod: 'getContacts',
-					// Versions 1 and 1.1 have a "Sender Number" field
-					loadOptionsDependsOn: ['number'],
-				},
 			},
 			{
-				displayName: 'Recipients Numbers',
-				name: 'recipients',
-				type: 'fixedCollection',
-				default: {},
+				...recipientNumbersField,
 				required: true,
 				displayOptions: {
 					show: {
-						...showForSend.show,
+						...showForLegacySend.show,
 						recipientType: ['numbers'],
 					},
 				},
-				description: 'Phone numbers of the recipients (with prefix)',
-				placeholder: 'Add a recipient number',
-				typeOptions: {
-					multipleValues: true,
-				},
-				options: [
-					{
-						displayName: 'Recipient Number',
-						name: 'recipient',
-						values: [
-							{
-								displayName: 'Recipient',
-								name: 'recipient',
-								type: 'string',
-								default: '',
-								placeholder: '+33...',
-								description: 'Phone number',
-							},
-						],
-					},
-				],
 			},
 			{
 				displayName: 'Group ID',
@@ -243,7 +273,7 @@ export class Signal implements INodeType {
 				description: 'Signal group to send the message to',
 				displayOptions: {
 					show: {
-						...showForSend.show,
+						...showForLegacySend.show,
 						recipientType: ['group'],
 					},
 				},
@@ -266,13 +296,35 @@ export class Signal implements INodeType {
 					},
 				],
 			},
+			// From version 1.3: numbers, contacts and groups can be combined
+			{
+				...recipientNumbersField,
+				displayOptions: showForSend,
+			},
+			{
+				...contactsField,
+				displayOptions: showForSend,
+			},
+			{
+				displayName: 'Group Names or IDs',
+				name: 'groupIds',
+				type: 'multiOptions',
+				default: [],
+				displayOptions: showForSend,
+				description:
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+				hint: 'Groups of the sender number. With an expression: "id" (group.…) or "internal_id" of the groups, as an array or a comma-separated list.',
+				typeOptions: {
+					loadOptionsMethod: 'getGroups',
+				},
+			},
 			{
 				displayName: 'Message',
 				name: 'message',
 				type: 'string',
 				default: undefined,
 				required: true,
-				displayOptions: showForSend,
+				displayOptions: showForAnySend,
 				description: 'Message to send',
 			},
 			{
@@ -280,7 +332,7 @@ export class Signal implements INodeType {
 				name: 'text_mode',
 				type: 'options',
 				default: 'styled',
-				displayOptions: showForSend,
+				displayOptions: showForAnySend,
 				options: [
 					{
 						name: 'Styled',
@@ -297,14 +349,14 @@ export class Signal implements INodeType {
 				name: 'notify_self',
 				type: 'boolean',
 				default: false,
-				displayOptions: showForSend,
+				displayOptions: showForAnySend,
 			},
 			{
 				displayName: 'Attachments',
 				name: 'base64_attachments',
 				type: 'fixedCollection',
 				placeholder: 'Add an attachment',
-				displayOptions: showForSend,
+				displayOptions: showForAnySend,
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -333,7 +385,7 @@ export class Signal implements INodeType {
 				type: 'collection',
 				placeholder: 'Add option',
 				default: {},
-				displayOptions: showForSend,
+				displayOptions: showForAnySend,
 				options: [
 					{
 						displayName: 'Quote Author',
@@ -365,8 +417,9 @@ export class Signal implements INodeType {
 		],
 		// 1.1: Message > Send outputs one object per API result instead of the raw array
 		// 1.2: the sender number is read from the credentials, the node field is removed
-		version: [1, 1.1, 1.2],
-		defaultVersion: 1.2,
+		// 1.3: numbers, contacts and groups can be combined in a message
+		version: [1, 1.1, 1.2, 1.3],
+		defaultVersion: 1.3,
 		displayName: 'Signal',
 		name: 'signal',
 		icon: {
@@ -393,6 +446,21 @@ export class Signal implements INodeType {
 				}
 
 				return toContactOptions(await getContacts.call(this, number));
+			},
+			async getGroups(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				let number: string;
+				try {
+					number = await getSenderNumber.call(this);
+				} catch {
+					return [];
+				}
+
+				return (await getGroups.call(this, number))
+					.map((group) => ({
+						name: (group.name as string) || (group.id as string),
+						value: group.id as string,
+					}))
+					.sort((a, b) => a.name.localeCompare(b.name));
 			},
 		},
 		listSearch: {
@@ -478,7 +546,6 @@ export class Signal implements INodeType {
 
 async function sendMessage(this: IExecuteFunctions, i: number): Promise<IDataObject | IDataObject[]> {
 	const number = await getSenderNumber.call(this, i);
-	const recipientType = this.getNodeParameter('recipientType', i) as string;
 	const base64Attachments = this.getNodeParameter('base64_attachments.attachment', i, []) as Array<{ attachment: string }>;
 	const textMode = this.getNodeParameter('text_mode', i) as string;
 	const message = this.getNodeParameter('message', i) as string;
@@ -489,31 +556,8 @@ async function sendMessage(this: IExecuteFunctions, i: number): Promise<IDataObj
 		quoteMessage?: string;
 	};
 
-	let recipients: string[];
-	if (recipientType === 'group') {
-		const groupId = this.getNodeParameter('groupId', i, '', { extractValue: true }) as string;
-		try {
-			recipients = [toSendGroupId(groupId)];
-		} catch (error) {
-			throw new NodeOperationError(this.getNode(), error.message, { itemIndex: i });
-		}
-	} else if (recipientType === 'contacts') {
-		const contacts = this.getNodeParameter('contacts', i, []) as string | string[];
-		// An expression can return a single value or a comma-separated list
-		recipients = (Array.isArray(contacts) ? contacts : String(contacts).split(','))
-			.map((contact) => String(contact).trim())
-			.filter((contact) => contact !== '');
-		if (recipients.length === 0) {
-			throw new NodeOperationError(this.getNode(), 'Select at least one contact', { itemIndex: i });
-		}
-	} else {
-		const numbers = this.getNodeParameter('recipients.recipient', i, []) as Array<{ recipient: string }>;
-		recipients = numbers.map(a => a.recipient);
-	}
-
 	const body: IDataObject = {
 		number: number,
-		recipients: recipients,
 		message: message,
 		notify_self: notifySelf,
 		text_mode: textMode,
@@ -542,7 +586,57 @@ async function sendMessage(this: IExecuteFunctions, i: number): Promise<IDataObj
 		}
 	}
 
-	return await signalApiRequest.call(this, 'POST', '/v2/send', body);
+	if (this.getNode().typeVersion < RECIPIENTS_COMBINED_VERSION) {
+		return await signalApiRequest.call(this, 'POST', '/v2/send', {
+			...body,
+			recipients: getLegacyRecipients.call(this, i),
+		});
+	}
+
+	const numbers = this.getNodeParameter('recipients.recipient', i, []) as Array<{ recipient: string }>;
+	const contacts = toList(this.getNodeParameter('contacts', i, []));
+	const groups = toList(this.getNodeParameter('groupIds', i, []));
+
+	let batches: string[][];
+	try {
+		batches = toSendBatches([...numbers.map((a) => a.recipient), ...contacts], groups);
+	} catch (error) {
+		throw new NodeOperationError(this.getNode(), error.message, { itemIndex: i });
+	}
+
+	// The API accepts a single group per request, without numbers: one request per batch
+	const results: IDataObject[] = [];
+	for (const recipients of batches) {
+		const response = await signalApiRequest.call(this, 'POST', '/v2/send', { ...body, recipients });
+		const batchResults = (Array.isArray(response) ? response : [response]) as IDataObject[];
+		results.push(...batchResults.map((result) => ({ ...result, recipients })));
+	}
+
+	return results;
+}
+
+// Versions 1 to 1.2: numbers, contacts or a single group
+function getLegacyRecipients(this: IExecuteFunctions, i: number): string[] {
+	const recipientType = this.getNodeParameter('recipientType', i) as string;
+	if (recipientType === 'group') {
+		const groupId = this.getNodeParameter('groupId', i, '', { extractValue: true }) as string;
+		try {
+			return [toSendGroupId(groupId)];
+		} catch (error) {
+			throw new NodeOperationError(this.getNode(), error.message, { itemIndex: i });
+		}
+	}
+
+	if (recipientType === 'contacts') {
+		const recipients = toList(this.getNodeParameter('contacts', i, []));
+		if (recipients.length === 0) {
+			throw new NodeOperationError(this.getNode(), 'Select at least one contact', { itemIndex: i });
+		}
+		return recipients;
+	}
+
+	const numbers = this.getNodeParameter('recipients.recipient', i, []) as Array<{ recipient: string }>;
+	return numbers.map(a => a.recipient);
 }
 
 async function getGroups(

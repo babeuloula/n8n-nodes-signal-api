@@ -41,20 +41,23 @@ Versions up to 0.3.0 were installed manually under the name `n8n-nodes-signal-ap
 
 ### Message > Send
 
-Send a Signal message to phone numbers, contacts or a group.
+Send a Signal message to phone numbers, contacts and groups.
 
 The message is sent from the Sender Number of the credentials.
 
 Fields:
-- Recipient Type: who receives the message.
-  - Numbers (default): one or more phone numbers.
-  - Contacts: one or more contacts of the Sender Number.
-  - Group: a Signal group.
-- Recipients Numbers (required for Numbers, multiple): one or more E.164 formatted recipient numbers.
-- Contacts (required for Contacts): pick the contacts from the list (contacts of the Sender Number of the credentials, loaded from the API), or use an expression returning numbers or UUIDs, as an array or a comma-separated list.
-- Group ID (required for Group): pick the group "From List" (groups of the Sender Number of the credentials, loaded from the API) or enter it "By ID" (expressions supported). Both formats are accepted by ID, the node converts it to the format expected by the API:
+- Recipients Numbers (multiple): E.164 formatted recipient numbers.
+- Contacts: pick contacts from the list (contacts of the Sender Number of the credentials, loaded from the API), or use an expression returning numbers or UUIDs, as an array or a comma-separated list.
+- Groups: pick groups from the list (groups of the Sender Number of the credentials, loaded from the API), or use an expression returning group identifiers, as an array or a comma-separated list. Both formats are accepted, the node converts them to the format expected by the API:
   - the `id` returned by `GET /v1/groups/{number}` (`group.` followed by base64), for example `group.QWNBaXlF...`;
   - the `internal_id` (also found as `groupInfo.groupId` in received messages), for example `AcAiyElQ...=`.
+
+Numbers, contacts and groups can be combined: set at least one recipient in any of these fields. Duplicates are removed. The API does not accept several groups, or groups and numbers, in the same request, so the node sends:
+- one request for all the numbers and contacts;
+- one request per group.
+
+If a request fails, the following ones are not sent (the previous ones are already sent).
+
 - Message (required): the message body to send.
 - Text Mode: how the message text is processed by the API.
   - styled (default)
@@ -68,17 +71,18 @@ Fields:
   - Quote Author: number or UUID of the author of the quoted message (`quote_author`). Required with Quote Timestamp.
   - Quote Message: text of the quoted message, displayed in the quote (`quote_message`).
 
-Output: one item per result returned by the API, for example `{ "timestamp": "1760000000999" }`.
+Output: one item per result returned by the API, with the `recipients` of the request it belongs to, for example `{ "timestamp": "1760000000999", "recipients": ["+33600000001", "+33600000002"] }`. With groups, there is one item per group, the recipient being the `id` of the group.
 
 Compatibility:
 - Workflows created with 0.1.x keep working unchanged: they send to numbers.
 - Signal nodes added before 0.3.0 (node version 1) keep returning the raw API response, an array: `[{ "timestamp": "…" }]`. Nodes added from 0.3.0 (node version 1.1) return an object. To switch an existing node to the new output, delete it and add it again.
 - Signal nodes added before the Sender Number moved to the credentials (node versions 1 and 1.1) keep their "Sender Number" field. When it is empty, the Sender Number of the credentials is used. Newer nodes (version 1.2) only use the credentials.
+- Signal nodes added before 0.5.0 (node versions 1 to 1.2) keep the "Recipient Type" selector: either Recipients Numbers, Contacts or a single Group ID ("From List" or "By ID"), and output the API results without `recipients`. Nodes added from 0.5.0 (node version 1.3) combine the recipients. To combine numbers, contacts and groups in an existing node, delete it and add it again.
 
 ### Group > Get Many
 
 List the Signal groups of the Sender Number of the credentials (`GET /v1/groups/{number}`). The node returns one item per group, with the fields returned by the API, including:
-- `id`: identifier to use in Message > Send (`group.…`);
+- `id`: identifier to use in the Groups field of Message > Send (`group.…`);
 - `internal_id`: identifier found in received messages (`groupInfo.groupId`);
 - `name`, `description`, `members`, `admins`, `blocked`, `invite_link`, …
 
@@ -121,10 +125,10 @@ Options:
 - Ignore My Own Messages (default: off): ignore messages sent by your own account.
 - Include Raw Envelope (default: off): add the raw envelope received from signal-cli as `rawEnvelope`, for debugging.
 
-The `groupId` output by the trigger can be used as is in the Group ID field of Message > Send to reply in the same group: the node converts it.
+The `groupId` output by the trigger can be used as is in the Groups field of Message > Send (Group ID in node versions 1 to 1.2) to reply in the same group: the node converts it.
 
 To reply by quoting the received message, set in Message > Send:
-- Group ID: `{{ $json.groupId }}`
+- Groups: `{{ $json.groupId }}`
 - Quote Timestamp: `{{ $json.timestamp }}`
 - Quote Author: `{{ $json.sourceNumber }}`
 - Quote Message: `{{ $json.text }}`
@@ -185,12 +189,12 @@ These credentials are then selected on the Signal node.
 Basic usage:
 1. Add the “Signal” node to your workflow.
 2. Select your “Signal API” credentials (the Sender Number is set there).
-3. Choose the Recipient Type: add one or more Recipients Numbers, pick Contacts, or set the Group ID.
+3. Add the recipients: Recipients Numbers, Contacts and/or Groups.
 4. Write your Message.
 5. Optionally, choose Text Mode, toggle Notify Self, and add Attachments.
 6. Execute the node.
 
-Group ID from a previous node (expression):
+Group from a previous node (expression in the Groups field):
 - `{{ $("Finaliser").first().json.groupId }}`
 
 Attachment example:
